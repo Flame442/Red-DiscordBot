@@ -180,4 +180,3 @@ def recursive_options(options: list, resolved: dict, path: list, guild):
         elif option_type == SlashOptions.NUMBER:
             args.append(float(option["value"]))
     return args, tuple(path)
-diff --git a/redbot/core/bot.py b/redbot/core/bot.py
