@@ -36,7 +36,7 @@ import discord
 from discord.ext import commands as dpy_commands
 from discord.ext.commands import when_mentioned_or
 
-from . import Config, i18n, commands, errors, drivers, modlog, bank
+from . import Config, i18n, commands, errors, drivers, modlog, bank, slash
 from .cog_manager import CogManager, CogManagerUI
 from .core_commands import Core
 from .data_manager import cog_data_path
@@ -89,6 +89,7 @@ class Red(
     """Our subclass of discord.ext.commands.AutoShardedBot"""
 
     def __init__(self, *args, cli_flags=None, bot_dir: Path = Path.cwd(), **kwargs):
+        self.slash_commands = {}
         self._shutdown_mode = ExitCodes.CRITICAL
         self._cli_flags = cli_flags
         self._config = Config.get_core_conf(force_registration=False)
@@ -1552,6 +1553,11 @@ class Red(
                 self.remove_permissions_hook(hook)
 
         super().remove_cog(cogname)
+        
+        for item in cog.__dir__():
+            item = getattr(cog, item, None)
+            if isinstance(item, slash.SlashCommand) and item.path in self.slash_commands:
+                del self.slash_commands[item.path]
 
         cog.requires.reset()
 
@@ -1664,6 +1670,15 @@ class Red(
                     added_hooks.append(hook)
 
             super().add_cog(cog)
+            
+            for item in cog.__dir__():
+                item = getattr(cog, item, None)
+                if isinstance(item, slash.SlashCommand):
+                    item.cog = cog
+                    self.slash_commands[item.path] = item
+                    for alias in item.aliases:
+                        self.slash_commands[alias] = item
+            
             self.dispatch("cog_add", cog)
             if "permissions" not in self.extensions:
                 cog.requires.ready_event.set()
@@ -2015,6 +2030,30 @@ class Red(
             failed_cogs=failures["cog"],
             unhandled=failures["unhandled"],
         )
+    
+        async def on_interaction(self, interaction):
+            # Filter out non-slash command interactions
+            if interaction.type != discord.InteractionType.application_command:
+                return
+            # Only accept interactions that occurred in a guild
+            if not interaction.guild:
+                await interaction.response.send_message(content="Commands cannot be used in DMs.")
+                return
+            
+            ctx = slash.SlashContext(self, interaction)
+            args, path = slash.prepare_args(interaction)
+            ctx.path = path
+            if path not in self.slash_commands:
+                await interaction.response.send_message(content="That command is not available right now. Try again later.", ephemeral=True)
+                return
+            
+            command = self.slash_commands[path]
+            await ctx._interaction.response.defer()
+            try:
+                await command.callback(command.cog, ctx, *args)
+            except Exception as e:
+                await ctx.send("`The command encountered an error. Try again in a moment.`")
+                self.logger.exception(f"Error in command {ctx.path}")
 
 
 class ExitCodes(IntEnum):

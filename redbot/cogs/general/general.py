@@ -7,6 +7,7 @@ import urllib.parse
 import aiohttp
 import discord
 from redbot.core import commands
+from redbot.core import slash
 from redbot.core.i18n import Translator, cog_i18n
 from redbot.core.utils.menus import menu, DEFAULT_CONTROLS
 from redbot.core.utils.chat_formatting import (
@@ -95,7 +96,7 @@ class General(commands.Cog):
         else:
             await ctx.send(choice(choices))
 
-    @commands.command()
+    @slash.command()
     async def roll(self, ctx, number: int = 100):
         """Roll a random number.
 
@@ -120,7 +121,7 @@ class General(commands.Cog):
                 )
             )
 
-    @commands.command()
+    @slash.command()
     async def flip(self, ctx, user: discord.Member = None):
         """Flip a coin... or a user.
 
