@@ -2031,29 +2031,29 @@ class Red(
             unhandled=failures["unhandled"],
         )
     
-        async def on_interaction(self, interaction):
-            # Filter out non-slash command interactions
-            if interaction.type != discord.InteractionType.application_command:
-                return
-            # Only accept interactions that occurred in a guild
-            if not interaction.guild:
-                await interaction.response.send_message(content="Commands cannot be used in DMs.")
-                return
-            
-            ctx = slash.SlashContext(self, interaction)
-            args, path = slash.prepare_args(interaction)
-            ctx.path = path
-            if path not in self.slash_commands:
-                await interaction.response.send_message(content="That command is not available right now. Try again later.", ephemeral=True)
-                return
-            
-            command = self.slash_commands[path]
-            await ctx._interaction.response.defer()
-            try:
-                await command.callback(command.cog, ctx, *args)
-            except Exception as e:
-                await ctx.send("`The command encountered an error. Try again in a moment.`")
-                self.logger.exception(f"Error in command {ctx.path}")
+    async def on_interaction(self, interaction):
+        # Filter out non-slash command interactions
+        if interaction.type != discord.InteractionType.application_command:
+            return
+        # Only accept interactions that occurred in a guild
+        if not interaction.guild:
+            await interaction.response.send_message(content="Commands cannot be used in DMs.")
+            return
+        
+        ctx = slash.SlashContext(self, interaction)
+        args, path = slash.prepare_args(interaction)
+        ctx.path = path
+        if path not in self.slash_commands:
+            await interaction.response.send_message(content="That command is not available right now. Try again later.", ephemeral=True)
+            return
+        
+        command = self.slash_commands[path]
+        await ctx._interaction.response.defer()
+        try:
+            await command.callback(command.cog, ctx, *args)
+        except Exception as e:
+            await ctx.send("`The command encountered an error. Try again in a moment.`")
+            self.logger.exception(f"Error in command {ctx.path}")
 
 
 class ExitCodes(IntEnum):
